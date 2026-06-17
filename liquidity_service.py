@@ -31,8 +31,10 @@ def get_exchange(exchange_name):
                         'private': 'https://testnet.binancefuture.com',
                     }
                 }
-        # Para agregar Bybit: ccxt.bybit({'options': {'defaultType': 'future'}})
-        # Para OKX:           ccxt.okx({'options': {'defaultType': 'swap'}})
+        if exchange_name == 'bybit':
+            kwargs['options']['defaultType'] = 'linear'
+        elif exchange_name == 'bingx':
+            kwargs['options']['defaultType'] = 'swap'
         cls = getattr(ccxt, exchange_name)
         _exchange_instances[exchange_name] = cls(kwargs)
     return _exchange_instances[exchange_name]
@@ -53,6 +55,22 @@ def _depth_at_slippage(levels, mid_price, slippage_pct, side):
     return total
 
 
+def _min_slippage_for_price(price, base_slippage):
+    """Para activos de precio bajo, el slippage mínimo debe ser mayor."""
+    if price < 1.0:
+        return max(base_slippage, 0.10)
+    elif price < 10.0:
+        return max(base_slippage, 0.05)
+    return base_slippage
+
+
+def _perp_symbol(exchange_name, symbol):
+    """Devuelve el símbolo correcto para contratos perpetuos según el exchange."""
+    if exchange_name in ('bybit', 'bingx'):
+        return f"{symbol}:USDT"
+    return symbol
+
+
 def fetch_order_book_depth(exchange_name, symbol):
     """
     Consulta el order book y calcula la profundidad para los umbrales
@@ -60,7 +78,8 @@ def fetch_order_book_depth(exchange_name, symbol):
     Retorna un dict con todos los valores necesarios para insert_depth().
     """
     ex = get_exchange(exchange_name)
-    ob = ex.fetch_order_book(symbol, limit=100)
+    perp_sym = _perp_symbol(exchange_name, symbol)
+    ob = ex.fetch_order_book(perp_sym, limit=100)
 
     bids = ob['bids']  # [[price, qty], ...] ordenados de mayor a menor
     asks = ob['asks']  # [[price, qty], ...] ordenados de menor a mayor
@@ -88,17 +107,35 @@ def fetch_volume_data(exchange_name, symbol, symbol_raw=None):
     ex = get_exchange(exchange_name)
 
     # Volumen 24h del ticker
-    ticker = ex.fetch_ticker(symbol)
+    perp_sym = _perp_symbol(exchange_name, symbol)
+    ticker = ex.fetch_ticker(perp_sym)
     volume_24h = ticker.get('quoteVolume') or 0.0
 
-    # Open Interest via endpoint REST público de Binance
+    # Open Interest: Binance usa endpoint propio, resto usa ccxt
     raw = symbol_raw or symbol.replace('/', '')
-    oi_usdt = fetch_open_interest_binance(raw)
+    if exchange_name == 'binance':
+        oi_usdt = fetch_open_interest_binance(raw)
+    else:
+        try:
+            oi_symbol = f"{symbol}:USDT" if exchange_name in ('bybit', 'bingx') else symbol
+            oi = ex.fetch_open_interest(oi_symbol)
+            oi_val = float(oi.get('openInterestValue') or oi.get('openInterest') or 0)
+            # Bybit devuelve OI en contratos base (no en USDT) — siempre multiplicar por precio
+            if exchange_name == 'bybit':
+                ticker2 = ex.fetch_ticker(f"{symbol}:USDT")
+                price2 = float(ticker2.get('last') or ticker2.get('close') or 1)
+                oi_usdt = oi_val * price2
+            else:
+                oi_usdt = oi_val
+        except Exception as e:
+            logger.warning(f'OI ccxt falló para {symbol} en {exchange_name}: {e}')
+            oi_usdt = None
 
     # Funding rate
     funding_rate = None
     try:
-        fr = ex.fetch_funding_rate(symbol)
+        fr_symbol = f"{symbol}:USDT" if exchange_name == 'bybit' else symbol
+        fr = ex.fetch_funding_rate(fr_symbol)
         funding_rate = fr.get('fundingRate')
     except Exception as e:
         logger.warning(f"Funding rate no disponible para {symbol} en {exchange_name}: {e}")
@@ -255,11 +292,15 @@ def calculate_recommendation(exchange, symbol, leverage, slippage_pct):
         return None
 
     # Seleccionar columna de depth según el umbral calculado
-    if slippage_pct <= 0.05:
+    # Ajustar slippage mínimo según precio del activo
+    mid = depth_row['mid_price'] or 1
+    eff_slippage = _min_slippage_for_price(mid, slippage_pct)
+
+    if eff_slippage <= 0.05:
         max_book = depth_row['buy_depth_005'] or 0
-    elif slippage_pct <= 0.10:
+    elif eff_slippage <= 0.10:
         max_book = depth_row['buy_depth_010'] or 0
-    elif slippage_pct <= 0.20:
+    elif eff_slippage <= 0.20:
         max_book = depth_row['buy_depth_020'] or 0
     else:
         max_book = depth_row['buy_depth_050'] or 0
