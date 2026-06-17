@@ -75,8 +75,8 @@ def fetch_order_book_depth(exchange_name, symbol):
         'bid_levels':  len(bids),
         'ask_levels':  len(asks),
     }
-    for pct in [0.05, 0.10, 0.20, 0.50]:
-        key = f"{pct:.2f}".replace('0.', '').replace('.', '')  # '005', '010', etc.
+    pct_keys = {0.05: '005', 0.10: '010', 0.20: '020', 0.50: '050'}
+    for pct, key in pct_keys.items():
         result[f'buy_{key}']  = _depth_at_slippage(asks, mid_price, pct, 'buy')
         result[f'sell_{key}'] = _depth_at_slippage(bids, mid_price, pct, 'sell')
 
