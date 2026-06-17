@@ -1,0 +1,15 @@
+services:
+  occ-liquidity:
+    build: .
+    container_name: occ-liquidity
+    env_file: .env.liquidity
+    ports:
+      - "127.0.0.1:5005:5000"
+    restart: unless-stopped
+    networks:
+      - occ-net
+
+networks:
+  occ-net:
+    external: true
+    name: occ-net

@@ -1,0 +1,5 @@
+.env.liquidity
+__pycache__/
+*.pyc
+*.log
+logs/

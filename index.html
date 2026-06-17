@@ -1,0 +1,636 @@
+/*  index.html */
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Capacidad Operativa de Mercado</title>
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #12151c;
+    --surface-2: #1a1e28;
+    --border: #252a38;
+    --border-light: #2e3448;
+    --text: #e2e4ec;
+    --text-2: #8b91a8;
+    --text-3: #555d75;
+    --green: #2ecc8a;
+    --yellow: #f0c040;
+    --red: #e05555;
+    --blue: #4f8ef7;
+    --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --radius: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0 0 3rem;
+  }
+
+  /* Header */
+  .header {
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 2rem;
+    display: flex;
+    align-items: baseline;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .header h1 {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-2);
+  }
+  .header-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .updated {
+    font-size: 12px;
+    color: var(--text-3);
+    font-family: var(--font-mono);
+  }
+  .btn {
+    background: var(--surface-2);
+    border: 1px solid var(--border-light);
+    color: var(--text-2);
+    padding: 6px 12px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .btn:hover { border-color: var(--blue); color: var(--text); }
+
+  /* Config bar */
+  .config-bar {
+    padding: 0.75rem 2rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .config-bar label { font-size: 13px; color: var(--text-2); }
+  .config-bar input[type="text"],
+  .config-bar input[type="password"] {
+    background: var(--bg);
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 5px 10px;
+    font-size: 13px;
+    min-width: 240px;
+  }
+  .status { font-size: 12px; color: var(--text-3); }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    gap: 0;
+  }
+  .tab {
+    padding: 0.875rem 1.25rem;
+    font-size: 13px;
+    color: var(--text-2);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .tab.active {
+    color: var(--text);
+    border-bottom-color: var(--blue);
+  }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  .tab-content { display: none; padding: 1.5rem 2rem; }
+  .tab-content.active { display: block; }
+
+  /* Tabla principal */
+  .capacity-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .capacity-table thead th {
+    text-align: right;
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .capacity-table thead th:first-child { text-align: left; }
+
+  /* Fila de Exchange (colapsable) */
+  .row-exchange td {
+    padding: 10px 12px;
+    background: var(--surface);
+    border-top: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border-light);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-2);
+  }
+  .row-exchange td:first-child {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .row-exchange:hover td { color: var(--text); background: var(--surface-2); }
+
+  .chevron {
+    font-size: 10px;
+    transition: transform 0.15s;
+    display: inline-block;
+  }
+  .chevron.open { transform: rotate(90deg); }
+
+  /* Fila de par */
+  .row-pair td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    vertical-align: middle;
+  }
+  .row-pair td:first-child {
+    text-align: left;
+    padding-left: 32px;
+    font-family: var(--font);
+    font-weight: 500;
+  }
+  .row-pair:last-of-type td { border-bottom: 2px solid var(--border); }
+
+  .row-pair.hidden { display: none; }
+
+  /* Valores */
+  .val-big {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .val-green { color: var(--green); }
+  .val-yellow { color: var(--yellow); }
+  .val-red { color: var(--red); }
+  .val-dim { color: var(--text-3); }
+
+  /* Badges */
+  .badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    font-family: var(--font);
+    letter-spacing: 0.03em;
+  }
+  .badge-depth   { background: rgba(79,142,247,0.12); color: var(--blue); }
+  .badge-volume  { background: rgba(240,192,64,0.12); color: var(--yellow); }
+  .badge-oi      { background: rgba(224,85,85,0.12);  color: var(--red); }
+
+  /* Barra de techos */
+  .ceiling-bars { display: flex; flex-direction: column; gap: 3px; min-width: 140px; }
+  .ceiling-row  { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+  .ceiling-label { color: var(--text-3); min-width: 8px; }
+  .ceiling-bar-wrap {
+    flex: 1; height: 4px; background: var(--border);
+    border-radius: 2px; overflow: hidden;
+  }
+  .ceiling-bar { height: 100%; border-radius: 2px; }
+  .ceiling-val { color: var(--text-2); min-width: 52px; text-align: right; }
+
+  /* Historial */
+  .chart-controls {
+    display: flex; gap: 12px; align-items: center;
+    margin-bottom: 1rem; flex-wrap: wrap;
+  }
+  .chart-controls select {
+    background: var(--surface-2); border: 1px solid var(--border-light);
+    color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 13px;
+  }
+  .chart-wrap { position: relative; height: 320px; }
+
+  /* Candidatos */
+  .candidates-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .candidates-table th {
+    text-align: right; padding: 8px 12px;
+    font-size: 11px; font-weight: 500;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text-3); border-bottom: 1px solid var(--border);
+  }
+  .candidates-table th:first-child,
+  .candidates-table th:nth-child(2) { text-align: left; }
+  .candidates-table td {
+    padding: 9px 12px; border-bottom: 1px solid var(--border);
+    text-align: right; font-family: var(--font-mono); font-size: 13px;
+  }
+  .candidates-table td:first-child,
+  .candidates-table td:nth-child(2) {
+    text-align: left; font-family: var(--font);
+  }
+
+  .dot-enabled  { color: var(--green); }
+  .dot-disabled { color: var(--text-3); }
+
+  .empty { color: var(--text-3); font-size: 13px; padding: 2rem 0; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Capacidad operativa de mercado</h1>
+  <div class="header-right">
+    <span class="updated" id="updatedAt">—</span>
+    <button class="btn" id="refreshBtn">↺ Actualizar</button>
+  </div>
+</div>
+
+<div class="config-bar">
+  <label>API</label>
+  <input type="text" id="apiBase" placeholder="https://occ-liquidity.tudominio.cl">
+  <label>Token</label>
+  <input type="password" id="apiToken" placeholder="">
+  <button class="btn" id="loadBtn">Cargar</button>
+  <span class="status" id="statusMsg"></span>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="capacity">Capacidad operativa</div>
+  <div class="tab" data-tab="history">Historial de liquidez</div>
+  <div class="tab" data-tab="candidates">Pares candidatos</div>
+</div>
+
+<!-- PESTAÑA 1: Capacidad operativa -->
+<div class="tab-content active" id="tab-capacity">
+  <table class="capacity-table">
+    <thead>
+      <tr>
+        <th style="text-align:left; width:180px;">Exchange / Par</th>
+        <th>Máx. por orden</th>
+        <th>Techo activo</th>
+        <th style="text-align:left; min-width:160px;">Techos (book / vol / OI)</th>
+        <th>Vol 24h</th>
+        <th>Open Interest</th>
+        <th>Cap. Mercado</th>
+        <th>Precio</th>
+        <th>Funding</th>
+        <th>L/S ratio</th>
+      </tr>
+    </thead>
+    <tbody id="capacityBody">
+      <tr><td colspan="10" class="empty" style="padding:2rem 12px;">
+        Ingresá la URL del API y hacé click en Cargar.
+      </td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- PESTAÑA 2: Historial -->
+<div class="tab-content" id="tab-history">
+  <div class="chart-controls">
+    <label style="font-size:13px;color:var(--text-2);">Exchange</label>
+    <select id="histExchange"><option value="binance">Binance</option></select>
+    <label style="font-size:13px;color:var(--text-2);">Par</label>
+    <select id="histSymbol"><option value="APT/USDT">APT/USDT</option></select>
+    <label style="font-size:13px;color:var(--text-2);">Período</label>
+    <select id="histHours">
+      <option value="24">Últimas 24h</option>
+      <option value="48">Últimas 48h</option>
+      <option value="72">Últimas 72h</option>
+    </select>
+    <button class="btn" id="loadHistBtn">Cargar</button>
+  </div>
+  <div class="chart-wrap">
+    <canvas id="histChart"></canvas>
+  </div>
+</div>
+
+<!-- PESTAÑA 3: Candidatos -->
+<div class="tab-content" id="tab-candidates">
+  <table class="candidates-table">
+    <thead>
+      <tr>
+        <th>Exchange</th>
+        <th>Par</th>
+        <th>Estado</th>
+        <th>Máx. por orden</th>
+        <th>Limitante</th>
+        <th>Vol 24h</th>
+        <th>Open Interest</th>
+        <th>Cap. Mercado</th>
+        <th>Cambio 24h</th>
+      </tr>
+    </thead>
+    <tbody id="candidatesBody">
+      <tr><td colspan="9" class="empty">Sin datos.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const fmtM = (v) => {
+  if (v == null) return '—';
+  if (v >= 1e9) return '$' + (v/1e9).toFixed(2) + 'B';
+  if (v >= 1e6) return '$' + (v/1e6).toFixed(1) + 'M';
+  if (v >= 1e3) return '$' + (v/1e3).toFixed(0) + 'K';
+  return '$' + v.toFixed(0);
+};
+const fmtN = (v, d=4) => v == null ? '—' : Number(v).toFixed(d);
+const fmtPct = (v) => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(3) + '%';
+
+// Config persistence
+const apiBaseEl  = document.getElementById('apiBase');
+const apiTokenEl = document.getElementById('apiToken');
+apiBaseEl.value  = localStorage.getItem('liq_api_base')  || '';
+apiTokenEl.value = localStorage.getItem('liq_api_token') || '';
+
+async function apiFetch(path, params={}) {
+  const base = apiBaseEl.value.replace(/\/$/, '');
+  const url  = new URL(base + path);
+  const token = apiTokenEl.value;
+  if (token) url.searchParams.set('token', token);
+  Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+  const resp = await fetch(url.toString());
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  return resp.json();
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Badge por limitante ───────────────────────────────────────────────────────
+function limitBadge(f) {
+  if (!f) return '—';
+  const map = {
+    book_depth:    ['BOOK', 'badge-depth'],
+    volume_24h:    ['VOL',  'badge-volume'],
+    open_interest: ['OI',   'badge-oi'],
+  };
+  const [label, cls] = map[f] || [f, ''];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+// ── Barra de techos ───────────────────────────────────────────────────────────
+function ceilingBars(book, vol, oi) {
+  const vals = [
+    { label: 'B', val: book, color: '#4f8ef7' },
+    { label: 'V', val: vol,  color: '#f0c040' },
+    { label: 'I', val: oi,   color: '#e05555' },
+  ].filter(x => x.val != null);
+  if (!vals.length) return '—';
+  const max = Math.max(...vals.map(x => x.val));
+  return '<div class="ceiling-bars">' + vals.map(x => `
+    <div class="ceiling-row">
+      <span class="ceiling-label">${x.label}</span>
+      <div class="ceiling-bar-wrap">
+        <div class="ceiling-bar" style="width:${(x.val/max*100).toFixed(0)}%;background:${x.color}"></div>
+      </div>
+      <span class="ceiling-val">${fmtM(x.val)}</span>
+    </div>`).join('') + '</div>';
+}
+
+// ── Tabla de capacidad ────────────────────────────────────────────────────────
+function renderCapacity(data) {
+  const body = document.getElementById('capacityBody');
+  if (!data.length) {
+    body.innerHTML = '<tr><td colspan="10" class="empty" style="padding:2rem 12px;">Sin datos disponibles.</td></tr>';
+    return;
+  }
+
+  // Agrupar por exchange
+  const byExchange = {};
+  data.forEach(r => {
+    if (!byExchange[r.exchange]) byExchange[r.exchange] = [];
+    byExchange[r.exchange].push(r);
+  });
+
+  let html = '';
+  Object.entries(byExchange).forEach(([exchange, rows]) => {
+    const exId = 'ex-' + exchange;
+    html += `<tr class="row-exchange" onclick="toggleExchange('${exId}')">
+      <td colspan="10">
+        <span class="chevron open" id="chev-${exId}">▶</span>
+        ${exchange.toUpperCase()}
+      </td>
+    </tr>`;
+
+    rows.forEach(r => {
+      const funding = r.funding_rate != null
+        ? `<span class="${r.funding_rate >= 0 ? 'val-green' : 'val-red'}">${fmtPct(r.funding_rate * 100)}</span>`
+        : '—';
+      const lsr = r.long_short_ratio != null
+        ? `<span class="${r.long_short_ratio >= 1 ? 'val-green' : 'val-red'}">${Number(r.long_short_ratio).toFixed(2)}</span>`
+        : '—';
+      const chg = r.price_change_24h_pct != null
+        ? `<span class="${r.price_change_24h_pct >= 0 ? 'val-green' : 'val-red'}">${fmtPct(r.price_change_24h_pct)}</span>`
+        : '';
+
+      html += `<tr class="row-pair" data-group="${exId}">
+        <td>${r.symbol} ${chg}</td>
+        <td class="val-big val-green">${fmtM(r.recommended_max_notional)}</td>
+        <td>${limitBadge(r.limiting_factor)}</td>
+        <td>${ceilingBars(r.max_notional_book_depth, r.max_notional_volume_rule, r.max_notional_oi_rule)}</td>
+        <td>${fmtM(r.volume_24h_usdt)}</td>
+        <td>${fmtM(r.open_interest_usdt)}</td>
+        <td>${fmtM(r.market_cap_usdt)}</td>
+        <td class="val-dim">${fmtN(r.mid_price)}</td>
+        <td>${funding}</td>
+        <td>${lsr}</td>
+      </tr>`;
+    });
+  });
+  body.innerHTML = html;
+}
+
+function toggleExchange(exId) {
+  const rows = document.querySelectorAll(`[data-group="${exId}"]`);
+  const chev = document.getElementById('chev-' + exId);
+  const isOpen = !rows[0]?.classList.contains('hidden');
+  rows.forEach(r => r.classList.toggle('hidden', isOpen));
+  chev.classList.toggle('open', !isOpen);
+}
+
+// ── Tabla de candidatos ────────────────────────────────────────────────────────
+function renderCandidates(data) {
+  const body = document.getElementById('candidatesBody');
+  if (!data.length) {
+    body.innerHTML = '<tr><td colspan="9" class="empty">Sin datos.</td></tr>';
+    return;
+  }
+  body.innerHTML = data.map(r => {
+    const dot = r.enabled
+      ? '<span class="dot-enabled">●</span> Activo'
+      : '<span class="dot-disabled">○</span> Inactivo';
+    const chg = r.price_change_24h_pct != null
+      ? `<span class="${r.price_change_24h_pct >= 0 ? 'val-green' : 'val-red'}">${fmtPct(r.price_change_24h_pct)}</span>`
+      : '—';
+    return `<tr>
+      <td>${r.exchange}</td>
+      <td>${r.symbol}</td>
+      <td style="font-family:var(--font);font-size:12px;">${dot}</td>
+      <td class="${r.recommended_max_notional ? 'val-green' : 'val-dim'}">${fmtM(r.recommended_max_notional)}</td>
+      <td>${limitBadge(r.limiting_factor)}</td>
+      <td>${fmtM(r.volume_24h_usdt)}</td>
+      <td>${fmtM(r.open_interest_usdt)}</td>
+      <td>${fmtM(r.market_cap_usdt)}</td>
+      <td>${chg}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Historial ─────────────────────────────────────────────────────────────────
+let histChart;
+function renderHistory(data, exchange, symbol) {
+  const labels = data.map(p => {
+    const d = new Date(p.timestamp);
+    const pad = n => String(n).padStart(2,'0');
+    return `${pad(d.getUTCDate())}-${pad(d.getUTCMonth()+1)} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+  });
+
+  const buy010  = data.map(p => p.buy_depth_010);
+  const sell010 = data.map(p => p.sell_depth_010);
+
+  if (histChart) {
+    histChart.data.labels = labels;
+    histChart.data.datasets[0].data = buy010;
+    histChart.data.datasets[1].data = sell010;
+    histChart.options.plugins.title.text = `${exchange.toUpperCase()} — ${symbol} — Profundidad @ 0.10% slippage`;
+    histChart.update();
+    return;
+  }
+
+  const existing = Chart.getChart('histChart');
+  if (existing) existing.destroy();
+
+  histChart = new Chart(document.getElementById('histChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Buy depth (0.10%)', data: buy010,
+          borderColor: '#4f8ef7', backgroundColor: 'transparent',
+          tension: 0.2, pointRadius: 0, borderWidth: 2 },
+        { label: 'Sell depth (0.10%)', data: sell010,
+          borderColor: '#2ecc8a', backgroundColor: 'transparent',
+          tension: 0.2, pointRadius: 0, borderWidth: 1.5,
+          borderDash: [4,3] },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        title: {
+          display: true,
+          text: `${exchange.toUpperCase()} — ${symbol} — Profundidad @ 0.10% slippage`,
+          color: '#8b91a8', font: { size: 12 }, padding: { bottom: 12 }
+        },
+        legend: { labels: { color: '#8b91a8', boxWidth: 12 } },
+        tooltip: { callbacks: {
+          label: ctx => ctx.dataset.label + ': ' + fmtM(ctx.parsed.y)
+        }},
+      },
+      scales: {
+        x: { ticks: { color: '#555d75', autoSkip: true, maxRotation: 0, maxTicksLimit: 8 },
+             grid: { display: false } },
+        y: { ticks: { color: '#555d75', callback: v => fmtM(v) },
+             grid: { color: '#1a1e28' } },
+      },
+    },
+  });
+}
+
+// ── Carga principal ───────────────────────────────────────────────────────────
+async function loadAll() {
+  if (!apiBaseEl.value) {
+    document.getElementById('statusMsg').textContent = 'Ingresá la URL del API.';
+    return;
+  }
+  localStorage.setItem('liq_api_base',  apiBaseEl.value);
+  localStorage.setItem('liq_api_token', apiTokenEl.value);
+  document.getElementById('statusMsg').textContent = 'Cargando...';
+  document.getElementById('loadBtn').disabled = true;
+
+  try {
+    const [cap, cand] = await Promise.all([
+      apiFetch('/api/capacity'),
+      apiFetch('/api/candidates'),
+    ]);
+    renderCapacity(cap.data || []);
+    renderCandidates(cand.data || []);
+
+    // Poblar selectores del historial
+    const exchanges = [...new Set((cap.data||[]).map(r => r.exchange))];
+    const symbols   = [...new Set((cap.data||[]).map(r => r.symbol))];
+    const exSel = document.getElementById('histExchange');
+    const symSel = document.getElementById('histSymbol');
+    exSel.innerHTML  = exchanges.map(e => `<option value="${e}">${e}</option>`).join('');
+    symSel.innerHTML = symbols.map(s => `<option value="${s}">${s}</option>`).join('');
+
+    document.getElementById('updatedAt').textContent =
+      'Actualizado: ' + new Date().toLocaleTimeString('es-CL') + ' UTC';
+    document.getElementById('statusMsg').textContent = '';
+  } catch (e) {
+    document.getElementById('statusMsg').textContent = 'Error: ' + e.message;
+  } finally {
+    document.getElementById('loadBtn').disabled = false;
+  }
+}
+
+async function loadHistory() {
+  const exchange = document.getElementById('histExchange').value;
+  const symbol   = document.getElementById('histSymbol').value;
+  const hours    = document.getElementById('histHours').value;
+  try {
+    const data = await apiFetch('/api/depth-history', { exchange, symbol, hours });
+    renderHistory(data.data || [], exchange, symbol);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+document.getElementById('loadBtn').addEventListener('click', loadAll);
+document.getElementById('refreshBtn').addEventListener('click', async () => {
+  try { await apiFetch('/api/refresh'); } catch {}
+  await loadAll();
+});
+document.getElementById('loadHistBtn').addEventListener('click', loadHistory);
+
+if (apiBaseEl.value) loadAll();
+</script>
+</body>
+</html>
